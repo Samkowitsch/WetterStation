@@ -126,6 +126,9 @@ void Ticker_24h(){
   vDelay(1000);
   writeEEprom8(0x01 , 0); //EEprom Rain/day = 0
   writeEEprom8(0x03 , 0); //EEProm Temp Count = 0
+
+  vDelay(5000);
+  ESP.restart();
 }
 
 //30 Tage Ticker------------------------------------------------------------------------------------------------------------------------------
