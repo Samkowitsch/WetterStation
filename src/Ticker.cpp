@@ -1,54 +1,66 @@
 #include <main.h>
 
+#define SMOOTHING_FACTOR 10.0
 
+bool  avg_init = false;
+float avg_temp;
+float avg_pres;
+float avg_hum;
+float avg_vbat;
 
+// Analog Filer (exponential Filter)---------------------------------------------------------------------------------
+float exp_filter(float value , float value_old , float smoothing_factor){
+	if(smoothing_factor > 100)
+		smoothing_factor = 100;
+	
+	float value_smoothed =((smoothing_factor * value)+ ((100 - smoothing_factor)*value_old))/100; 	
+return value_smoothed;
+}
 
 
 //Sekunden Ticker--------------------------------------------------------------------------------------------------------------------------------
 void Ticker_1s(){
 
+  float temp , pres , hum , vbat;
 
-  #ifdef DEBUG_Prog
-    digitalWrite(LED_BUILTIN , !digitalRead(LED_BUILTIN));
-    Serial.print("ADC :");
-    Serial.println(analogRead(A0));
-  #endif
+  getBMESensorData(temp , pres ,hum);
+  vbat = getVBatt();
+
+  //direction = getWindDirection() * 22.5;
+
+
+  if(mqttClient.connected() == 0)
+    mqtt_Connect();
+
+
+  char payload[128];
+  sprintf(payload , "{ \"temp\":%.1f, \"pres\":%.1f, \"hum\":%.1f, \"ts\":%d}", temp , pres , hum , unixTime );
+  mqttClient.publish("WeatherStat/Outdoor/Act" ,payload);
+
+  if(avg_init == true){
+    exp_filter(temp , avg_temp , SMOOTHING_FACTOR);
+    exp_filter(pres , avg_pres , SMOOTHING_FACTOR);
+    exp_filter(hum  , avg_hum  , SMOOTHING_FACTOR);
+    exp_filter(vbat , avg_vbat , SMOOTHING_FACTOR);
+  }else{
+    avg_temp = temp;
+    avg_pres = pres;
+    avg_hum  = hum;
+    avg_vbat = vbat;
+    avg_init = true;
+  }
+
 }
 
 //10 Sekunden Ticker-------------------------------------------------------------------------------------------------------------------------------
 void Ticker_10s(){
-  #ifdef DEBUG_Prog
-    Serial.println("Ticker 10s");
-  #endif
+
+
 }
 
 //Minuten Ticker------------------------------------------------------------------------------------------------------------------------------------
 void Ticker_1m(){
 
-
-    getBMESensorData();
-
-
-    Temp_Av_10m[Av_10m_Index] = fTemp;
-    Hum_Av_10m[Av_10m_Index] = fHum;
-    Pres_Av_10m[Av_10m_Index] = fPres;
-    
-    Av_10m_Index++;
-
-    #ifdef DEBUG_Prog
-        Serial.println("Ticker 1m");
-        Serial.printf("%.2f C, %.1f hPa, %.1f %% Index : %d\n",Temp_Av_10m[Av_10m_Index - 1],Pres_Av_10m[Av_10m_Index - 1],Hum_Av_10m[Av_10m_Index - 1], Av_10m_Index);
-        Serial.printf("Int16_t : %d\n",(int16_t)(Temp_Av_10m[Av_10m_Index - 1] * 100));
-    #endif
-
-    #ifndef SOLAR
-      char buffer[32];
-      sprintf(buffer , "%d" , unixTime);
-      if(mqttClient.connected() == 0)
-        mqtt_Connect();
-      mqttClient.publish("Wetterstation/Unixtime" , buffer ,true);
-    #endif
-  //
 
 
 }
@@ -56,85 +68,38 @@ void Ticker_1m(){
 
 //10 Minuten Ticker-----------------------------------------------------------------------------------------------------------------------------------
 void Ticker_10m(){
-  #ifdef DEBUG_Prog
-    Serial.println("Ticker 10m");
-  #endif
 
-    float fTemp_Sum = 0.0;
-    float fHum_Sum  = 0.0;
-    float fPres_Sum = 0.0;
+ if(mqttClient.connected() == 0)
+    mqtt_Connect();
 
-    for (uint8_t i = 0; i < Av_10m_Index; i++){
-        fTemp_Sum   += Temp_Av_10m[i];
-        fHum_Sum    += Hum_Av_10m[i];
-        fPres_Sum   += Pres_Av_10m[i];
-    }
-    
-    fTemp_Average_10m   = fTemp_Sum / Av_10m_Index;
-    fHum_Average_10m    = fHum_Sum  / Av_10m_Index;
-    fPres_Average_10m   = fPres_Sum / Av_10m_Index;
+  float speed = float(getWindCounter()) / 250;
+  float direction = getWindDirection() * 22.5;
 
-    Av_10m_Index = 0;
+  char payload[256];
+  sprintf(payload , "{\"temp\":%.1f, \"pres\":%.1f, \"hum\":%.1f, \"speed\": %.1f, \"dir\": %.1f, \"batt\": %.2f, \"ts\":%d}", avg_temp , avg_pres , avg_hum , speed , direction , avg_vbat , unixTime );
+  mqttClient.publish("WeatherStat/Outdoor/Avg" , payload);
 
+  Serial.println("10 min Ticker ! ");
+  timeClient.update();
 
-    Temp_Av = (int16_t)(fTemp_Average_10m * 100);
-    Temp_Av_Count = readEEprom8(0x03);
-    writeEEprom16((0x04 + (Temp_Av_Count*2)) , Temp_Av);
-    Temp_Av_Count++;
-    writeEEprom8(0x03 , Temp_Av_Count);
-    
-    #ifdef DEBUG
-        Serial.printf("EEProm Coount : %d  , Temp : %d\n" ,readEEprom8(0x03) , (int16_t)readEEprom16(0x04 + (2*(Temp_Av_Count-1))));
-    #endif
-
-    timeClient.update();
-    writeDatabase_VBatt();
-    vDelay(1000);
-    writeDatabase_10m();
-    vDelay(1000);
 }
 
 //Stunden Ticker--------------------------------------------------------------------------------------------------------------------------------------
 void Ticker_1h(){
-  #ifdef DEBUG_Prog
-    Serial.println("Ticker 1h");
-  #endif
-  //write rain data in db
-  writeDatabase_1h();
-  vDelay(1000);
-  writeEEprom8(0x00 , 0); //EEprom Rain/hour = 0
+
 }
 
 //24 Stunden Ticker(02:00)---------------------------------------------------------------------------------------------------------------------------
 void Ticker_24h(){
-  #ifdef DEBUG_Prog
-    Serial.println("Ticker 24h");
-  #endif
 
-  // write avg. Temp in db
-
-  float fTemp_Sum = 0.0;
-
-  for(uint16_t i = 0; i < Temp_Av_Count ; i++)
-    fTemp_Sum += ((int16_t)readEEprom16(0x04 + (2*i)));
-
-  fTemp_Sum /= 100;
-
-  fTemp_Average = fTemp_Sum / Temp_Av_Count;
-
-  writeDatabase_24h();
-  vDelay(1000);
-  writeEEprom8(0x01 , 0); //EEprom Rain/day = 0
-  writeEEprom8(0x03 , 0); //EEProm Temp Count = 0
-
-  vDelay(5000);
   ESP.restart();
 }
 
 //30 Tage Ticker------------------------------------------------------------------------------------------------------------------------------
 void Ticker_30d(){
-  ESP.restart();
+  //ESP.restart();
 }
+
 
 //Ticker-------------------------------------------------------------------------------------------------------------------------------------
 void Ticker(){
@@ -148,8 +113,9 @@ void Ticker(){
     unixTime = timeClient.getEpochTime();
     //Serial.printf("%d:%d:%d   Mod: %d Time : %d \n" , timeClient.getHours(), timeClient.getMinutes() , timeClient.getSeconds() , unixTime % 60 , time_2 - time_1);
 
-    if(unixTime % 10 == 0)
+    if(unixTime % 10 == 0){
       Ticker_10s();
+    }
 
     if(unixTime % 60 == 0)
       Ticker_1m();

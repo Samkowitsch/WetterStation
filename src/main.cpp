@@ -4,14 +4,14 @@ const char* SSID_1 = "Weffling";
 const char* SSID_2 = "Weffling_Outdoor";
 const char* SSID_PASSWORD = "86508912437821699676";
 
-const char* mqtt_Broker_IP = "192.168.178.59" ;
+const char* mqtt_Broker_IP = "192.168.178.45" ;
 const char* mqtt_User = "Mosquitto";
 const char* mqtt_Pw   = "-Sam!993+";
 const char* mqtt_ClientId = "Wetterstation_Mqtt";
 
-IPAddress mySqlServer(192,168,178,59);
-char  mySqlUser[] = "Raspberry";
-char  mySqlPw[]   = "R$eT}m8#)o,Q";
+// IPAddress mySqlServer(192,168,178,59);
+// char  mySqlUser[] = "Raspberry";
+// char  mySqlPw[]   = "R$eT}m8#)o,Q";
 
 
 const int32_t utcOffsetInSeconds = 0;  
@@ -26,7 +26,7 @@ PubSubClient mqttClient(mqtt_Broker_IP,  1883 , mqtt_Callback ,  WetterStation_C
 
 
 
-MySQL_Connection conn(&WetterStation_Client);
+// MySQL_Connection conn(&WetterStation_Client);
 
 Adafruit_BME280 BME280;
 
@@ -115,7 +115,6 @@ void setup() {
   timeClient.update();
 
   unixTime = timeClient.getEpochTime();
-  //mqttClient.publish("Wetterstation/time" , unixTime);
 
   Wire.begin();
 
@@ -141,7 +140,7 @@ void loop() {
 
   mqttClient.loop();
 
-  getRainData();
+  //getRainData();
   Ticker();
 
 }

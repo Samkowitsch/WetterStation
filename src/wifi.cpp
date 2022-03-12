@@ -15,7 +15,7 @@ void WifiON(){
 //WiFi Ausschalten-------------------------------------------------------------------------------------------------------------------------------
 void WifiOFF(){
   vDelay(200);
-  mqttClient.publish("Wetterstation/Connection" , "Disconnected");
+  //mqttClient.publish("Wetterstation/Connection" , "Disconnected");
   vDelay(200);
   mqttClient.disconnect();
   vDelay(200);
@@ -107,9 +107,9 @@ uint8_t mqtt_Connect(){
 
   while(!mqttClient.connected()){
 
-    if(mqttClient.connect(mqtt_ClientId , mqtt_User , mqtt_Pw))
-      mqttClient.publish("Wetterstation/Connection" ,  "Connected" );
-    else{
+    if(mqttClient.connect(mqtt_ClientId)){
+      //mqttClient.publish("WeatherStat/Outdoor/Mqtt" ,  "Connected" );
+    }else{
       // Serial.print("\nConnection failed with state:");
       // Serial.println(mqttClient.state());
     }

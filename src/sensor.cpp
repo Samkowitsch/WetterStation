@@ -1,8 +1,10 @@
-#include <main.h>
+#include <Arduino.h>
 
+#include "main.h"
+#include "sensor.h"
 
 //BME280 Auslesen------------------------------------------------------------------------------------------------------------------------
-void getBMESensorData(){
+void getBMESensorData(float &temp , float &pres , float &hum){
 
   if(I2C_Error){
     digitalWrite(pinRelais , LOW);
@@ -16,22 +18,18 @@ void getBMESensorData(){
   float fPres_New = BME280.readPressure() / 100;
   float fHum_New = BME280.readHumidity();
 
-
+  // Sanity Check values to check is i2c is still working
   if(fTemp_New > 60.0 || fTemp_New <  -50.0){
     #ifdef DEBUG_Prog
       Serial.println("I2C Error !!!");
     #endif
     I2C_Error = 1;
     digitalWrite(pinRelais , HIGH);
-  }else{
-    I2C_Error = 0;
-    fTemp = fTemp_New;
-    fPres = fPres_New;
-    fHum = fHum_New;
 
-    dtostrf(fTemp , 2 , 2 , cTemp);
-    dtostrf(fPres , 1 , 4 , cPres);
-    dtostrf(fHum , 2 , 1 , cHum);
+  }else{
+    temp = fTemp_New;
+    pres = fPres_New;
+    hum  = fHum_New;
   }
 
 }
@@ -64,6 +62,7 @@ float getVBatt(){
   uint32_t data;
   data = analogRead(A0);
   float volt = (float(data)/1023) * UREF * 2; 
+
   #ifdef DEBUG_Prog
     Serial.printf("Analog Read: %d , %f V\n",data , volt );
   #endif

@@ -12,8 +12,8 @@
 #include <WiFiUdp.h>
 #include <user_interface.h>
 
-#include <MySQL_Connection.h>
-#include <MySQL_Cursor.h>
+// #include <MySQL_Connection.h>
+// #include <MySQL_Cursor.h>
 
 #include <PubSubClient.h>
 
@@ -67,7 +67,7 @@ extern WiFiClient WetterStation_Client;
 
 extern PubSubClient mqttClient;
 
-extern MySQL_Connection conn;
+// extern MySQL_Connection conn;
 
 extern Adafruit_BME280 BME280;
 
@@ -103,17 +103,6 @@ extern uint8_t rain_day;
 extern uint8_t pinRain_Status_Old; 
 extern uint32_t rain_millis_old;
 
-extern float fTemp_Average;
-extern float fTemp_Average_10m;
-extern float fTemp;
-extern float fPres_Average_10m;
-extern float fPres;
-extern float fHum_Average_10m;
-extern float fHum;
-
-extern char cTemp[];
-extern char cPres[];
-extern char cHum[];
 
 
 extern float fWind_Speed;
@@ -141,7 +130,7 @@ void Ticker();
 
 void I2C_Scanner();
 
-void getBMESensorData();
+void getBMESensorData(float &temp , float &pres , float &hum);
 void getRainData();
 float getVBatt();
 uint16_t getWindCounter();
